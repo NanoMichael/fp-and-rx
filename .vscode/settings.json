@@ -1,0 +1,6 @@
+{
+  "markdown.marp.themes": [
+    "./themes/dark.css",
+    "./themes/dracula.css"
+  ]
+}
