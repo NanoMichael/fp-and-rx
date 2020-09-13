@@ -43,6 +43,11 @@ pre code {
 pre code svg[data-marp-fitting=svg] {
   max-height: calc(580px - 1em);
 }
+
+img[alt~="center"] {
+  display: block;
+  margin: 0 auto;
+}
 </style>
 
 <!-- _class: lead invert -->
@@ -94,7 +99,7 @@ Optional
   .flatMap(b -> Optional.ofNullable(getC(b)))
   .flatMap(c -> Optional.ofNullable(getD(c)))
   // ...
-  .ifPresent(x -> doSomething());
+  .ifPresent(x -> doSomething(x));
 ```
 
 ```Kotlin
@@ -103,7 +108,7 @@ a
   ?.let { getC(it) }
   ?.let { getD(it) }
   // ...
-  ?.run { doSomething() }
+  ?.run { doSomething(it) }
 ```
 
 ---
@@ -133,10 +138,14 @@ for (ai in a) {
 ```Kotlin
 val list = a
   .flatMap { ai ->
-    b.map { bi -> listOf(ai, bi) }
+    b.map { bi ->
+      listOf(ai, bi)
+    }
   }
   .flatMap { list ->
-    c.map { ci -> list + ci }
+    c.map { ci ->
+      list + ci
+    }
   }
   // ...
 ```
@@ -145,20 +154,53 @@ val list = a
 
 ---
 
+## Function
+
+> In mathematics, a function is a binary relation over two sets that associates every element of the first set, to exactly one element of the second set. 
+
+- 一个集合到另一个集合的映射
+- 给定一个输入，有且仅有一个输出
+- 函数间可组合，记作：`(f.g)(x) = f(g(x))`
+
+![bg right:36% 80%](./function.svg)
+
+---
+
+## Category theory
+
+> In math-speak, categories are:
+>
+> 1. collections of “objects” (you should think of sets),
+> 2. and “arrows” (you should think of functions between sets),
+> 3. where each arrow has a domain and a range,
+> 4. each object has an “identity” arrow (think of the identity function, where `f(x) = x`)
+> 5. and arrows can be composed when the domains and ranges match up right.
+>
+> -- [_Why do monads matter?_](https://cdsmith.wordpress.com/2012/04/18/why-do-monads-matter/)
+
+---
+
 ## Function composition
 
-文件 A 的内容为另一个文件 B 的地址，给定文件 A 的地址，读取文件 B 的内容：
+> Functional programming is all about function composition,
+> nothing more.
 
-- 读取文件 A 的内容
-- 将文件 A 的内容作为参数，读取文件 B 的内容
+---
+
+### 一个例子
+
+给定一个文件，内容为一个网络地址：
+
+- 读取文件内容
+- 将文件内容作为参数，获取网络资源
+- 保存内容到本地并返回文件地址
 
 ```Kotlin
-fun readFile(path: String): String {
-  val content = // ... read file
-  return content
-}
-val contentOfA = readFile(pathOfA)
-val contentOfB = readFile(contentOfA)
+fun readFile(path: String): String = // ...
+fun readNet(url: String): String = // ...
+fun saveIntoFile(content: String): String = // ...
+
+val contentPath = saveIntoFile(readNet(readFile(filePath)))
 ```
 
 ---
@@ -170,29 +212,27 @@ val contentOfB = readFile(contentOfA)
 ```
 
 ```
-fun <T, R1, R2> ((R1) -> R2).compose(g: (T) -> R1) = { t ->
+infix fun <T, R1, R2> ((R1) -> R2).compose(g: (T) -> R1) = { t: T ->
   this(g(t))
 }
 
-val contentOfB = (::readFile.compose(::readFile))(pathOfA)
+val f = ::saveIntoFile compose ::readNet compose ::readFile
+val contentPath = f(filePath)
 ```
 
-![w:180 h:180](./what.jpg)
+![w:180 h:180 center](./what.jpg)
 
 ---
 
 ### Chain style
 
 ```Kotlin
-fun <T, R1, R2> ((T) -> R1).then(f: (R1) -> R2) = { t ->
-  this(f(t))
+infix fun <T, R1, R2> ((T) -> R1).then(f: (R1) -> R2) = { t: T ->
+  f(this(t))
 }
 
-val f = readFile
-  .then { content -> content.filter { isDigit(it) } }
-  .then { digits -> digits.toInt() }
-
-val num = f()
+val f = ::readFile then ::readNet then ::saveIntoFile
+val contentPath = f(filePath)
 ```
 
 ---
@@ -200,33 +240,90 @@ val num = f()
 ### Async
 
 ```Kotlin
-fun readFile(path: String, onRead: (content: String) -> Unit) {
-  val content = // ... read file
-  onRead(content)
+fun readFileCallback(path: String, callback: (url: String) -> Unit) {
+  callback(readFile(String))
+}
+fun readNetCallback(url: String, callback: (content: String) -> Unit) {
+  callback(readNet(String))
+}
+fun saveIntoFileCallback(content: String, callback: (path: String) -> Unit) {
+  callback(saveIntoFile(content))
 }
 
-readFile(pathOfA) { contentOfA ->
-  readFile(contentOfA) { contentOfB ->
-    // ... do something
+readFileCallback(path) { url ->
+  readNetCallback(url) { content ->
+    saveIntoFileCallback(content) { path -> /* do something */ }
   }
 }
 ```
 
 ---
 
-## Function composition
-
-> FP is all about function composition,
-> nothing more.
-
 我们希望的是：
 
 ```Kotlin
-val readAFunction = ???
-val readBFunction = ???
-val composition = compose(readAFunction, readBFunction)
-composition()
+val readFileF = ???
+val readNetF = ???
+val saveIntoFileF = ???
+
+val f = readFileF then readNetF then saveIntoFileF
+f { path ->
+  doSomething()
+}
 ```
+
+---
+
+定义一种`伪函数`，消除实际参数，保留 `callback` 参数
+
+```Kotlin
+interface F<T> {
+  operator fun invoke(callback: (T) -> Unit)
+}
+
+val readFileF = object : F<String> {
+  override fun invoke(callback: (String) -> Unit) {
+    callback(readFile(path))
+  }
+}
+readFileF { println(it) }
+```
+
+---
+
+这种`伪函数`应可以和普通函数组合，定义为 `map`
+
+```Kotlin
+fun <T, R> F<T>.map(f: (T) -> R): F<R> = object : F<R> {
+  override fun invoke(callback: (R) -> Unit) {
+    this@map { t -> callback(f(t)) }
+  }
+}
+```
+
+还应有 `id` 函数，返回自己本身
+
+```Kotlin
+class Id<T>(val t: T) : F<T> {
+  override fun invoke(callback: (T) -> Unit) {
+    callback(t)
+  }
+}
+```
+
+---
+
+现在可以以 `callback` 的方式对普通函数进行链式调用了
+
+```Kotlin
+val f = Id(filePath)
+  .map { path -> readFile(path) }
+  .map { url -> readNet(url) }
+  .map { content -> saveIntoFile(content) }
+f { println(it) }
+```
+
+WAO！ `callback hell` 没了！
 
 ---
 
