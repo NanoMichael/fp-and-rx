@@ -159,7 +159,7 @@ val list = a
 > In mathematics, a function is a binary relation over two sets that associates every element of the first set, to exactly one element of the second set. 
 
 - 一个集合到另一个集合的映射
-- 有定义域和值域
+- 定义域和值域限定函数的作用范围
 - 给定一个输入，有且仅有一个输出
 - 若定义域和值域匹配，函数间可组合，记作：`(f.g)(x) = f(g(x))`
 
@@ -221,7 +221,7 @@ val f = ::saveIntoFile compose ::readNet compose ::readFile
 val contentPath = f(filePath)
 ```
 
-![w:180 h:180 center](./what.jpg)
+![h:180 center](./what.jpg)
 
 ---
 
