@@ -317,7 +317,7 @@ typealias F<T> = (Callback<T>) -> Unit // ((T) -> Unit) -> Unit
 fun <T> id(x: T): F<T> = { f -> f(x) } // identity
 ```
 
-如何组合这些函数？
+这种形式也被称为 [CPS (Continuation Passing Style)](https://en.wikipedia.org/wiki/Continuation-passing_style)。如何组合这些函数？
 
 ---
 
