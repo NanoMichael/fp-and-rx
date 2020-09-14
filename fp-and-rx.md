@@ -159,8 +159,9 @@ val list = a
 > In mathematics, a function is a binary relation over two sets that associates every element of the first set, to exactly one element of the second set. 
 
 - 一个集合到另一个集合的映射
+- 有定义域和值域
 - 给定一个输入，有且仅有一个输出
-- 函数间可组合，记作：`(f.g)(x) = f(g(x))`
+- 若定义域和值域匹配，函数间可组合，记作：`(f.g)(x) = f(g(x))`
 
 ![bg right:36% 80%](./function.svg)
 
@@ -267,84 +268,125 @@ val readNetF = ???
 val saveIntoFileF = ???
 
 val f = readFileF then readNetF then saveIntoFileF
-f { path ->
+f { contentPath ->
   doSomething()
 }
 ```
 
+我们希望各个异步函数也能进行组合，而现在各个函数的定义域和值域都不匹配
+
 ---
 
-定义一种`伪函数`，消除实际参数，保留 `callback` 参数
+## Currying and Higher Order Function
 
-```Kotlin
-interface F<T> {
-  operator fun invoke(callback: (T) -> Unit)
-}
+所谓「柯里化」，就是将一个有多个参数的函数转换为一个每次只接受一个参数的函数，这个函数被称为「高阶函数」。编程语言 `Haskell` 天然支持「柯里化」。
 
-val readFileF = object : F<String> {
-  override fun invoke(callback: (String) -> Unit) {
-    callback(readFile(path))
-  }
-}
-readFileF { println(it) }
+```Haskell
+sum :: (Num a) -> a -> a -> a
+sum x y = x + y
+let sum3 = sum 3 -- 相当于 3 + ?
+sum3 2 -- 相当于 3 + 2
 ```
 
 ---
 
-这种`伪函数`应可以和普通函数组合，定义为 `map`
+Kotlin 模拟下：
 
 ```Kotlin
-fun <T, R> F<T>.map(f: (T) -> R): F<R> = object : F<R> {
-  override fun invoke(callback: (R) -> Unit) {
-    this@map { t -> callback(f(t)) }
-  }
+fun <T1, T2, R> ((T1, T2) -> R).currying() = { t1: T1 ->
+  { t2: T2 -> this(t1, t2) }
+}
+
+val readFileF = ::readFileWithCallback.currying()(path) // ((T) -> Unit) -> Unit
+readFileF { url ->
+  println(url)
 }
 ```
 
-还应有 `id` 函数，返回自己本身
+通过「柯里化」，现在各个函数的定义域和值域相匹配了
+
+---
+
+将「柯里化」后的函数抽象，定义一个「高阶函数」，消除实际参数，只保留 `callback` 参数：
 
 ```Kotlin
-class Id<T>(val t: T) : F<T> {
-  override fun invoke(callback: (T) -> Unit) {
-    callback(t)
-  }
-}
+typealias Callback<T> = (T) -> Unit
+
+typealias F<T> = (Callback<T>) -> Unit // ((T) -> Unit) -> Unit
+
+fun <T> id(x: T): F<T> = { f -> f(x) } // identity
+```
+
+如何组合这些函数？
+
+---
+
+## Functor
+
+首先考虑一种情况，如何组合普通函数？将 `F<T>` 看作一个盒子，盒子里包含了函数的调用过程，「组合」就是将这个盒子打开，取出值，然后应用这个函数，把这个函数的值再放到一个盒子里，`Functor` 定义了这个过程。
+
+![width:900px](./fmap.png)
+
+```Haskell
+class Functor f where fmap :: (a -> b) -> f a -> f b
 ```
 
 ---
+
+Kotlin 表示:
+
+```Kotlin
+infix fun <T, R> F<T>.fmap(f: (T) -> R): F<R> = { callback: Callback<R> ->
+  this { t -> callback(f(t)) }
+}
+```
 
 现在可以以 `callback` 的方式对普通函数进行链式调用了
 
 ```Kotlin
-val f = Id(filePath)
+val f = id(filePath)
   .map { path -> readFile(path) }
   .map { url -> readNet(url) }
   .map { content -> saveIntoFile(content) }
 f { println(it) }
 ```
 
-WAO！ `callback hell` 没了！
+WOW！ `callback hell` 没了！
 
 ---
 
 ## Monad
 
+还有一个问题，`Functor` 之间怎么组合？
+
+```Kotlin
+infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
+  this { t -> f(t)(callback) }
+}
+```
+
 ---
 
-## FP vs Rx
-
----
-
-## Coroutine
+## Rx
 
 ---
 
 ## Use Rx
 
+- Error handling
 - Control driven and Data driven
 - Proactive and Reactive
-- Purity
 
 ---
 
 ## References
+
+- [_代码实现_](https://gist.github.com/NanoMichael/1639a06805d93319c673b991e13c6047)
+
+- [_Why Do Monads Matter?_](https://cdsmith.wordpress.com/2012/04/18/why-do-monads-matter/)
+
+- [_Functors, Applicatives, And Monads In Pictures_](http://adit.io/posts/2013-04-17-functors,_applicatives,_and_monads_in_pictures.html)
+
+- [_Monads_](http://softwaresimply.blogspot.com/2012/04/ltmt-part-2-monads.html)
+
+- [_Category Theory for Programmers_](https://unglueit-files.s3.amazonaws.com/ebf/e90890f0a6ea420c9825657d6f3a851d.pdf)
