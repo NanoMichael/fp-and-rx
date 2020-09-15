@@ -208,8 +208,8 @@ val contentPath = saveIntoFile(readNet(readFile(filePath)))
 
 ### 另一种形式
 
-```
-(f . g) x = f g x
+```Haskell
+(f . g) x = f(g(x))
 ```
 
 ```
@@ -284,6 +284,7 @@ f { contentPath ->
 ```Haskell
 sum :: (Num a) -> a -> a -> a
 sum x y = x + y
+
 let sum3 = sum 3 -- 相当于 3 + ?
 sum3 2 -- 相当于 3 + 2
 ```
@@ -345,10 +346,12 @@ infix fun <T, R> F<T>.fmap(f: (T) -> R): F<R> = { callback: Callback<R> ->
 
 ```Kotlin
 val f = id(filePath)
-  .map { path -> readFile(path) }
-  .map { url -> readNet(url) }
-  .map { content -> saveIntoFile(content) }
+  .fmap { path -> readFile(path) }
+  .fmap { url -> readNet(url) }
+  .fmap { content -> saveIntoFile(content) }
 f { println(it) }
+// 或者
+val g = id(filePath) fmap ::readFile fmap ::readNet fmap ::saveIntoFile
 ```
 
 WOW！ `callback hell` 没了！
@@ -357,7 +360,9 @@ WOW！ `callback hell` 没了！
 
 ## Monad
 
-还有一个问题，`Functor` 之间怎么组合？
+还有一个问题，`F<*>` 之间怎么组合？`Functor` 可以将 `callback` 和普通函数组合，而更普遍的情况是，我只提供 `callback` 形式的 API。`Monad` 来解决这个问题。
+
+---
 
 ```Kotlin
 infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
@@ -368,14 +373,6 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 ---
 
 ## Rx
-
----
-
-## Use Rx
-
-- Error handling
-- Control driven and Data driven
-- Proactive and Reactive
 
 ---
 
@@ -390,3 +387,14 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 - [_Monads_](http://softwaresimply.blogspot.com/2012/04/ltmt-part-2-monads.html)
 
 - [_Category Theory for Programmers_](https://unglueit-files.s3.amazonaws.com/ebf/e90890f0a6ea420c9825657d6f3a851d.pdf)
+
+
+---
+
+
+## What next...
+
+- Error handling
+- Control driven and Data driven
+- Proactive and Reactive
+- Purity
