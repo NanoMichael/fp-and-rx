@@ -183,8 +183,9 @@ val list = a
 
 ## Function composition
 
-> Functional programming is all about function composition,
-> nothing more.
+> Functional programming is all about function composition, nothing more.
+
+![bg right:40% w:70%](https://upload.wikimedia.org/wikipedia/commons/2/21/Function_machine5.svg)
 
 ---
 
@@ -360,7 +361,7 @@ WOW！ `callback hell` 没了！
 
 ## Monad
 
-还有一个问题，`F<*>` 之间怎么组合？`Functor` 可以将 `callback` 和普通函数组合，而更普遍的情况是，我只提供 `callback` 形式的 API。`Monad` 来解决这个问题。
+还有一个问题，`F<*>` 之间怎么组合？`Functor` 可以将 `callback` 和普通函数组合，而更普遍的情况是，只提供了 `callback` 形式的函数。`Monad` 可以解决这个问题。
 
 ---
 
@@ -372,13 +373,18 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 
 ---
 
-## Rx
+## Conclusion
+
+- 函数式编程的核心是函数组合
+- `Functor` 解决 `F<T>` 与普通函数的组合问题
+- `Monad` 解决 `F<T>` 之间的组合问题
+- 这两种方法解决了 `callback hell`
+
+所有代码可在[这里](https://gist.github.com/NanoMichael/1639a06805d93319c673b991e13c6047)找到
 
 ---
 
 ## References
-
-- [_代码实现_](https://gist.github.com/NanoMichael/1639a06805d93319c673b991e13c6047)
 
 - [_Why Do Monads Matter?_](https://cdsmith.wordpress.com/2012/04/18/why-do-monads-matter/)
 
@@ -392,7 +398,7 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 ---
 
 
-## What next...
+## What next ...
 
 - Error handling
 - Control driven and Data driven
