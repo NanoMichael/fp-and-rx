@@ -157,8 +157,10 @@ val list = a
 ## Function
 
 > In mathematics, a function is a binary relation over two sets that associates every element of the first set, to exactly one element of the second set. 
+>
+> -- [_from wikipedia_](https://en.wikipedia.org/wiki/Function_(mathematics))
 
-- 一个集合到另一个集合的映射
+- 一个集合到另一个集合的映射，`y = f(x)`
 - 定义域和值域限定函数的作用范围
 - 给定一个输入，有且仅有一个输出
 - 若定义域和值域匹配，函数间可组合，记作：`(f.g)(x) = f(g(x))`
@@ -167,17 +169,15 @@ val list = a
 
 ---
 
-## Category theory
+## Functional programming
 
-> In math-speak, categories are:
+> In computer science, functional programming is a programming paradigm where programs are constructed by _**applying and composing functions**_. It is a _**declarative**_ programming paradigm in which function definitions are trees of expressions that each return a value, rather than a sequence of imperative statements which change the state of the program.
 >
-> 1. collections of “objects” (you should think of sets),
-> 2. and “arrows” (you should think of functions between sets),
-> 3. where each arrow has a domain and a range,
-> 4. each object has an “identity” arrow (think of the identity function, where `f(x) = x`)
-> 5. and arrows can be composed when the domains and ranges match up right.
->
-> -- [_Why do monads matter?_](https://cdsmith.wordpress.com/2012/04/18/why-do-monads-matter/)
+> -- [_from wikipedia_](https://en.wikipedia.org/wiki/Functional_programming)
+
+- 函数是一等公民
+- 应用程序通过函数组合而成
+- 由表达式构成，而不是语句
 
 ---
 
@@ -292,7 +292,7 @@ sum3 2 -- 相当于 3 + 2
 
 ---
 
-Kotlin 模拟下：
+Kotlin 实现：
 
 ```Kotlin
 fun <T1, T2, R> ((T1, T2) -> R).currying() = { t1: T1 ->
@@ -319,7 +319,7 @@ typealias F<T> = (Callback<T>) -> Unit // ((T) -> Unit) -> Unit
 fun <T> id(x: T): F<T> = { f -> f(x) } // identity
 ```
 
-这种形式也被称为 [CPS (Continuation Passing Style)](https://en.wikipedia.org/wiki/Continuation-passing_style)。如何组合这些函数？
+这种形式也被称为 [CPS (Continuation Passing Style)](https://en.wikipedia.org/wiki/Continuation-passing_style)，这个回调也叫 `continuation`，字面意思就是「延续」，在逻辑上和顺序调用的函数是等价的。问题来了，如何组合这些函数？
 
 ---
 
@@ -363,13 +363,36 @@ WOW！ `callback hell` 没了！
 
 还有一个问题，`F<*>` 之间怎么组合？`Functor` 可以将 `callback` 和普通函数组合，而更普遍的情况是，只提供了 `callback` 形式的函数。`Monad` 可以解决这个问题。
 
+> The curse of the monad is that once you get the epiphany, once you understand ‘oh that’s what it is’, you lose the ability to explain it to anybody else.
+>
+> -- [_Douglas Crockford_](https://en.wikipedia.org/wiki/Douglas_Crockford)
+
+- 一种数据类型
+- 用来表示「计算」而不是「数据」
+- 用来组织包含有序操作的过程，或者定义任意的控制流（比如处理并发、异常、延续等等）
+- 这个例子中，就是要处理「延续」
+
 ---
+
+Kotlin 实现（一般这个函数叫做 `bind`）：
 
 ```Kotlin
 infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
   this { t -> f(t)(callback) }
 }
 ```
+
+组合一下：
+
+```Kotlin
+val g = id(filePath)
+    .bind(::readFileCallback.currying())
+    .bind(::readNetCallback.currying())
+    .bind(::saveIntoFileCallback.currying())
+g { println(it) }
+```
+
+`callback hell` 被完美消除
 
 ---
 
@@ -379,6 +402,7 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 - `Functor` 解决 `F<T>` 与普通函数的组合问题
 - `Monad` 解决 `F<T>` 之间的组合问题
 - 这两种方法解决了 `callback hell`
+- 通过 `Functor` 和 `Monad` 可以定义任意的操作符号
 
 所有代码可在[这里](https://gist.github.com/NanoMichael/1639a06805d93319c673b991e13c6047)找到
 
@@ -394,12 +418,11 @@ infix fun <T, R> F<T>.bind(f: (T) -> F<R>): F<R> = { callback: Callback<R> ->
 
 - [_Category Theory for Programmers_](https://unglueit-files.s3.amazonaws.com/ebf/e90890f0a6ea420c9825657d6f3a851d.pdf)
 
-
 ---
-
 
 ## What next ...
 
+- Applicative
 - Error handling
 - Control driven and Data driven
 - Proactive and Reactive
